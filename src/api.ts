@@ -57,6 +57,14 @@ router.get('/game/:gameId', async (req, res) => {
 router.patch('/game/:gameId', async (req, res) => {
 	const gameId = req.params.gameId;
 	const updatedGame = req.body as Game;
+	if (gameId !== updatedGame.id) {
+		res.statusMessage = "Unprocessable Entity";
+		res.status(422).json({
+			status: "error",
+			message: "Cannot change game ID",
+		});
+		return;
+	}
 	const success = await useDatabase(async db => {
 		const idx = db.games.findIndex(game => game.id === gameId);
 		if (idx === -1) {
