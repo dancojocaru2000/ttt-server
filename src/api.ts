@@ -18,7 +18,10 @@ router.get('/meta/nickRegex', async (_, res) => {
 
 router.get('/games', async (_, res) => {
 	await useDatabase(async db => {
-		res.json(db.games);
+		res.json({
+			status: "ok",
+			games: db.games
+		});
 	});
 });
 
