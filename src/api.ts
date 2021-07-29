@@ -79,7 +79,10 @@ router.patch('/game/:gameId', async (req, res) => {
 			});
 			return false;
 		}
-		db.games.splice(idx, 1, updatedGame);
+		db.games.splice(idx, 1, {
+			...db.games[idx],
+			...updatedGame,
+		});
 		return true;
 	});
 	if (success) {
@@ -90,11 +93,15 @@ router.patch('/game/:gameId', async (req, res) => {
 });
 
 router.get('/users', async (_, res) => {
-	await useDatabase(async db => {
-		res.json(db.users.map(u => {
+	const users = await useDatabase(async db => {
+		return db.users.map(u => {
 			return { ...u, secret: undefined }
-		}));
+		});
 	});
+	res.json({
+		status: "ok",
+		users,
+	})
 });
 
 router.post('/user/new', async (req, res) => {
