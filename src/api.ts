@@ -86,7 +86,9 @@ router.patch('/game/:gameId', async (req, res) => {
 
 router.get('/users', async (_, res) => {
 	await useDatabase(async db => {
-		res.json(db.users);
+		res.json(db.users.map(u => {
+			return { ...u, secret: undefined }
+		}));
 	});
 });
 
@@ -154,7 +156,10 @@ router.get('/user/:userId', async (req, res) => {
 	else {
 		res.json({
 			status: "ok",
-			user,
+			user: {
+				...user,
+				secret: undefined,
+			},
 		})
 	}
 });
