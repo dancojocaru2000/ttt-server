@@ -27,6 +27,7 @@ declare module 'express-serve-static-core' {
 app.use(async (req, _, next) => {
 	const secret = req.get('X-Secret-String');
 	req.secret = secret;
+	next();
 });
 
 app.use('/api', apiRouter);
