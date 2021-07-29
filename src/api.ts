@@ -7,12 +7,17 @@ import { User } from './types/user';
 const router = express.Router();
 export default router;
 
-const nickRegex = /^[A-Za-z][A-Za-z0-9-_]*$/;
+const NICK_REGEX = /^[A-Za-z][A-Za-z0-9-_]*$/;
+const CODE_VALIDITY_MS = 15 * 1000;
+
+const ramStore = {
+	codes: {},
+} as { codes: { [code: string]: { userId: string, intervalHandle: any } } };
 
 router.get('/meta/nickRegex', async (_, res) => {
 	res.json({
 		status: "ok",
-		regex: nickRegex.source,
+		regex: NICK_REGEX.source,
 	});
 });
 
@@ -104,12 +109,12 @@ router.post('/user/new', async (req, res) => {
 		});
 		return;
 	}
-	if (!nickRegex.test(nickname)) {
+	if (!NICK_REGEX.test(nickname)) {
 		req.statusMessage = 'Unprocessable Entity';
 		res.status(422).json({
 			status: "error",
 			message: "Invalid nickname; only English letters, digits, dash - and underscore _ allowed; only letters first!",
-			regex: nickRegex.source,
+			regex: NICK_REGEX.source,
 		});
 		return;
 	}
@@ -140,6 +145,77 @@ router.post('/user/new', async (req, res) => {
 		status: "ok",
 		user: newUser,
 	})
+});
+
+router.get('/user/:userId/code', async (req, res) => {
+	const userId = req.params.userId;
+
+	if (!await useDatabase(async db => db.users.some(u => u.id === userId))) {
+		res.statusMessage = 'Unprocessable Entity';
+		res.status(422).json({
+			status: "error",
+			message: "User doesn't exist",
+		});
+		return;
+	}
+
+	const code = (() => {
+		while (true) {
+			const attempt = Math.max(Math.min(Math.floor(Math.random() * 10000), 9999), 1);
+			const attemptString = attempt.toString().padStart(4, '0');
+			if (!Object.keys(ramStore.codes).includes(attemptString)) {
+				return attemptString;
+			}
+		}
+	})();
+
+	const expirationDate = new Date(Date.now() + CODE_VALIDITY_MS);
+	const intervalHandle = setInterval(() => {
+		if (Date.now() - expirationDate.getTime() > 0) {
+			clearInterval(intervalHandle);
+			delete ramStore.codes[code];
+		}
+	}, 1000);
+
+	ramStore.codes[code] = {
+		intervalHandle,
+		userId,
+	};
+
+	res.json({
+		status: "ok",
+		code,
+		expirationDate: expirationDate.toISOString(),
+	});
+})
+
+router.post('/user/login/code', async (req, res) => {
+	const { code }: { code?: string } = req.body;
+	if (!code || code.length !== 4 || !parseInt(code)) {
+		res.status(400).json({
+			status: "error",
+			message: "Invalid code - bad format",
+		});
+		return;
+	}
+	const userId = ramStore.codes[code].userId;
+	const user = await useDatabase(async db => db.users.find(user => user.id === userId));
+	if (!user) {
+		res.statusMessage = 'Unprocessable Entity';
+		res.status(422).json({
+			status: "error",
+			message: "Code doesn't exist",
+		});
+		return;
+	}
+	else {
+		clearInterval(ramStore.codes[code].intervalHandle);
+		delete ramStore.codes[code];
+		res.json({
+			status: "ok",
+			user
+		});
+	}
 });
 
 router.get('/user/:userId', async (req, res) => {
