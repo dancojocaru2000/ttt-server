@@ -12,7 +12,7 @@ const CODE_VALIDITY_MS = 15 * 1000;
 
 const ramStore = {
 	codes: {},
-} as { codes: { [code: string]: { userId: string, intervalHandle: any } } };
+} as { codes: { [code: string]: { userId: string, intervalHandle: any } | undefined } };
 
 router.get('/meta/nickRegex', async (_, res) => {
 	res.json({
@@ -217,7 +217,7 @@ router.post('/user/login/code', async (req, res) => {
 		});
 		return;
 	}
-	const userId = ramStore.codes[code].userId;
+	const userId = ramStore.codes[code]?.userId;
 	const user = await useDatabase(async db => db.users.find(user => user.id === userId));
 	if (!user) {
 		res.statusMessage = 'Unprocessable Entity';
@@ -228,7 +228,7 @@ router.post('/user/login/code', async (req, res) => {
 		return;
 	}
 	else {
-		clearInterval(ramStore.codes[code].intervalHandle);
+		clearInterval(ramStore.codes[code]!.intervalHandle);
 		delete ramStore.codes[code];
 		res.json({
 			status: "ok",
