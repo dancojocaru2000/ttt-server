@@ -150,11 +150,20 @@ router.post('/user/new', async (req, res) => {
 router.get('/user/:userId/code', async (req, res) => {
 	const userId = req.params.userId;
 
-	if (!await useDatabase(async db => db.users.some(u => u.id === userId))) {
+	const user = await useDatabase(async db => db.users.find(u => u.id === userId));
+	if (!user) {
 		res.statusMessage = 'Unprocessable Entity';
 		res.status(422).json({
 			status: "error",
 			message: "User doesn't exist",
+		});
+		return;
+	}
+	else if (user.secret !== req.secret) {
+		res.statusMessage = 'Unprocessable Entity';
+		res.status(422).json({
+			status: "error",
+			message: "Invalid secret",
 		});
 		return;
 	}

@@ -18,6 +18,17 @@ app.use(async (req, _, next) => {
 	next();
 });
 
+// Read X-Secret-String header
+declare module 'express-serve-static-core' {
+	interface Request {
+		secret?: string,
+	}	
+}
+app.use(async (req, _, next) => {
+	const secret = req.get('X-Secret-String');
+	req.secret = secret;
+});
+
 app.use('/api', apiRouter);
 
 app.get('/', (_, res) => {
