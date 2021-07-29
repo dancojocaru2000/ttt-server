@@ -160,10 +160,29 @@ router.get('/user/:userId/code', async (req, res) => {
 	}
 
 	const code = (() => {
+		const bannedExpr = [
+			/666/,
+		];
+		for (let i = 0; i < 7; i++) {
+			bannedExpr.push(new RegExp(`${i}${i + 1}${i + 2}${i + 3}`));
+		}
+		for (let i = 9; i > 2; i--) {
+			bannedExpr.push(new RegExp(`${i}${i - 1}${i - 2}${i - 3}`));
+		}
+		for (let i = 0; i < 10; i++) {
+			bannedExpr.push(new RegExp(`${i}${i}${i}${i}`));
+		}
 		while (true) {
 			const attempt = Math.max(Math.min(Math.floor(Math.random() * 10000), 9999), 1);
 			const attemptString = attempt.toString().padStart(4, '0');
-			if (!Object.keys(ramStore.codes).includes(attemptString)) {
+			let rejected = false;
+			for (const banned of bannedExpr) {
+				if (banned.test(attemptString)) {
+					rejected = true;
+					break;
+				}
+			}
+			if (!rejected && !Object.keys(ramStore.codes).includes(attemptString)) {
 				return attemptString;
 			}
 		}
