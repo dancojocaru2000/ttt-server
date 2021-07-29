@@ -7,6 +7,15 @@ import { User } from './types/user';
 const router = express.Router();
 export default router;
 
+const nickRegex = /^[A-Za-z][A-Za-z0-9-_]*$/;
+
+router.get('/meta/nickRegex', async (_, res) => {
+	res.json({
+		status: "ok",
+		regex: nickRegex.source,
+	});
+});
+
 router.get('/games', async (_, res) => {
 	await useDatabase(async db => {
 		res.json(db.games);
@@ -80,7 +89,6 @@ router.post('/user/new', async (req, res) => {
 		});
 		return;
 	}
-	const nickRegex = /^[A-Za-z][A-Za-z0-9-_]*$/;
 	if (!nickRegex.test(nickname)) {
 		req.statusMessage = 'Unprocessable Entity';
 		res.status(422).json({
