@@ -22,7 +22,9 @@ router.get('/games', async (_, res) => {
 	});
 });
 
-router.post('/games', async (req, res) => {
+router.post('/games', async (_, res) => res.redirect('./game', 301));
+
+router.post('/game', async (req, res) => {
 	const newGame = req.body as Game;
 	await useDatabase(async db => db.games.push(newGame));
 	res.json({
