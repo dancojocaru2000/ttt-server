@@ -194,6 +194,20 @@ router.get('/user/:userId/code', async (req, res) => {
 })
 
 router.post('/user/login/code', async (req, res) => {
+	// Check rate limit
+	const rateLimit = shouldRateLimit("codeLogin", req.ip);
+	if (rateLimit) {
+		res.setHeader("Retry-After", rateLimit.allowDate.toUTCString());
+		res.setHeader("X-Rate-Limit-Type", rateLimit.type);
+		res.status(429).json({
+			status: "error",
+			message: "Rate Limited! Try again later.",
+			retryAfter: rateLimit.allowDate.toISOString(),
+			rateLimitType: rateLimit.type,
+		});
+		return;
+	}
+
 	const { code }: { code?: string } = req.body;
 	if (!code || code.length !== 4 || !parseInt(code)) {
 		res.status(400).json({

@@ -2,6 +2,9 @@
 export const ramStore = {
 	codes: {},
 	sockets: {},
+	rateLimits: {
+		codeLogin: [],
+	},
 } as {
 	codes: {
 		[code: string]: {
@@ -15,6 +18,9 @@ export const ramStore = {
 	},
 	sockets: {
 		[userId: string]: Array<WebSocket>,
+	},
+	rateLimits: {
+		codeLogin: Array<[string, Date]>,
 	},
 };
 
@@ -114,3 +120,47 @@ export interface CodeDescription {
 
 // #endregion
 
+// #region Rate Limits
+
+// Clear rate limits
+setInterval(() => {
+	for (const _rlAction in ramStore.rateLimits) {
+		const rlAction = _rlAction as keyof typeof ramStore.rateLimits;
+		const indexesToClear = [] as Array<number>;
+		for (const [idx, [_, until]] of ramStore.rateLimits[rlAction].entries()) {
+			if (Date.now() - until.getTime() > 0) {
+				indexesToClear.push(idx);
+			}
+		}
+		for (const idx of indexesToClear.reverse()) {
+			ramStore.rateLimits[rlAction].splice(idx, 1);
+		}
+	}
+}, 500);
+
+export function shouldRateLimit(action: keyof typeof ramStore.rateLimits, id: string): { allowDate: Date, type: string, } | undefined {
+	const DEFAULT_RATE_LIMITS_MS = {
+		codeLogin: 1500,
+	}
+	const newLimit = new Date(Date.now() + DEFAULT_RATE_LIMITS_MS[action]);
+
+	for (const [idx, [limited, until]] of ramStore.rateLimits[action].entries()) {
+		if (limited === id) {
+			ramStore.rateLimits[action][idx][1] = newLimit;
+			if (Date.now() - until.getTime() < 0) {
+				return {
+					allowDate: newLimit,
+					type: action,
+				};
+			}
+			else {
+				return;
+			}
+		}
+	}
+
+	ramStore.rateLimits[action].push([id, newLimit]);
+	return;
+}
+
+// #endregion
