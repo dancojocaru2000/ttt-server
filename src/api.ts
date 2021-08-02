@@ -12,7 +12,7 @@ const CODE_VALIDITY_MS = 15 * 1000;
 
 const ramStore = {
 	codes: {},
-} as { codes: { [code: string]: { userId: string, intervalHandle: any } | undefined } };
+} as { codes: { [code: string]: { userId: string, intervalHandle: ReturnType<typeof setInterval> } | undefined } };
 
 router.get('/meta/nickRegex', async (_, res) => {
 	res.json({
