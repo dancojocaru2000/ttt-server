@@ -30,6 +30,15 @@ router.get('/games', async (_, res) => {
 	});
 });
 
+router.get('/games/with/:userId', async (req, res) => {
+	const userId = req.params.userId;
+	const games = await useDatabase(async db => db.games.filter(game => game.players.X === userId || game.players.O === userId));
+	res.json({
+		status: "ok",
+		games,
+	});
+})
+
 router.post('/games', async (_, res) => res.redirect('./game', 301));
 
 router.post('/game', async (req, res) => {
