@@ -204,7 +204,8 @@ router.get('/user/:userId/code', async (req, res) => {
 		}
 	})();
 
-	const expirationDate = new Date(Date.now() + CODE_VALIDITY_MS);
+	const issueDate = new Date();
+	const expirationDate = new Date(issueDate.getTime() + CODE_VALIDITY_MS);
 	const intervalHandle = setInterval(() => {
 		if (Date.now() - expirationDate.getTime() > 0) {
 			clearInterval(intervalHandle);
@@ -221,6 +222,8 @@ router.get('/user/:userId/code', async (req, res) => {
 		status: "ok",
 		code,
 		expirationDate: expirationDate.toISOString(),
+		issueDate: issueDate.toISOString(),
+		expiresInSeconds: Math.floor((expirationDate.getTime() - issueDate.getTime()) / 1000),
 	});
 })
 
