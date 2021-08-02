@@ -1,8 +1,12 @@
 import express from "express";
 import { getPort } from "./utils";
 import apiRouter from './api';
+import { upgradeDatabase } from "./db";
 
 const app = express();
+
+app.set('trust proxy', true);
+app.set('x-powered-by', false);
 
 app.use(express.static('public'));
 app.use(express.json());
@@ -36,6 +40,18 @@ app.get('/', (_, res) => {
 	res.send('Test');
 });
 
-const port = getPort({ defaultPort: 3000 });
-app.listen(port);
-console.log(`Started listening on port ${port}`);
+async function start(): Promise<void> {
+	// Print hostname
+	console.log(`Hostname: ${hostname()}`);
+
+	// Upgrade database when starting application
+	console.log('Upgrading database...');
+	await upgradeDatabase();
+
+	const port = getPort({ defaultPort: 3000 });
+	const httpServer = app.listen(port);
+	console.log(`Started listening on port ${port}`);
+
+}
+
+start();

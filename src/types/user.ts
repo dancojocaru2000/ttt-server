@@ -6,6 +6,7 @@ export interface User {
 		local: UserStats,
 		online: UserStats,
 	},
+	friends: Array<string>,
 }
 
 export interface UserStats {

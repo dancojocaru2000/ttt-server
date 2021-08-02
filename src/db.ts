@@ -58,3 +58,14 @@ export async function useDatabase<T>(callback: (db: Database) => Promise<T>): Pr
 		return result;
 	});
 }
+
+export async function upgradeDatabase(): Promise<void> {
+	await useDatabase(async db => {
+		// Add friends to users
+		for (const user of db.users) {
+			if (!user.friends && user.friends !== []) {
+				user.friends = [];
+			}
+		}
+	});
+}

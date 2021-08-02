@@ -152,6 +152,7 @@ router.post('/user/new', async (req, res) => {
 				won: 0,
 			}
 		},
+		friends: [],
 	};
 	await useDatabase(async db => db.users.push(newUser));
 	res.json({
