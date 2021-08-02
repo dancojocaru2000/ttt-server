@@ -1,6 +1,7 @@
 import express from 'express';
 import { nanoid } from 'nanoid';
 import { loadDatabase, useDatabase } from './db';
+import { createLoginCode, shouldRateLimit, useLoginCode } from './ramStore';
 import { Game } from './types/game';
 import { User } from './types/user';
 
@@ -9,10 +10,6 @@ export default router;
 
 const NICK_REGEX = /^[A-Za-z][A-Za-z0-9-_]*$/;
 const CODE_VALIDITY_MS = 15 * 1000;
-
-const ramStore = {
-	codes: {},
-} as { codes: { [code: string]: { userId: string, intervalHandle: ReturnType<typeof setInterval> } | undefined } };
 
 router.get('/meta/nickRegex', async (_, res) => {
 	res.json({
@@ -141,7 +138,7 @@ router.post('/user/new', async (req, res) => {
 		});
 		return;
 	}
-	const newUser = {
+	const newUser: User = {
 		id: nanoid(),
 		nickname,
 		secret: nanoid(),
@@ -155,7 +152,7 @@ router.post('/user/new', async (req, res) => {
 				won: 0,
 			}
 		},
-	} as User;
+	};
 	await useDatabase(async db => db.users.push(newUser));
 	res.json({
 		status: "ok",
@@ -184,48 +181,7 @@ router.get('/user/:userId/code', async (req, res) => {
 		return;
 	}
 
-	const code = (() => {
-		const bannedExpr = [
-			/666/,
-		];
-		for (let i = 0; i < 7; i++) {
-			bannedExpr.push(new RegExp(`${i}${i + 1}${i + 2}${i + 3}`));
-		}
-		for (let i = 9; i > 2; i--) {
-			bannedExpr.push(new RegExp(`${i}${i - 1}${i - 2}${i - 3}`));
-		}
-		for (let i = 0; i < 10; i++) {
-			bannedExpr.push(new RegExp(`${i}${i}${i}${i}`));
-		}
-		while (true) {
-			const attempt = Math.max(Math.min(Math.floor(Math.random() * 10000), 9999), 1);
-			const attemptString = attempt.toString().padStart(4, '0');
-			let rejected = false;
-			for (const banned of bannedExpr) {
-				if (banned.test(attemptString)) {
-					rejected = true;
-					break;
-				}
-			}
-			if (!rejected && !Object.keys(ramStore.codes).includes(attemptString)) {
-				return attemptString;
-			}
-		}
-	})();
-
-	const issueDate = new Date();
-	const expirationDate = new Date(issueDate.getTime() + CODE_VALIDITY_MS);
-	const intervalHandle = setInterval(() => {
-		if (Date.now() - expirationDate.getTime() > 0) {
-			clearInterval(intervalHandle);
-			delete ramStore.codes[code];
-		}
-	}, 1000);
-
-	ramStore.codes[code] = {
-		intervalHandle,
-		userId,
-	};
+	const { code, issueDate, expirationDate } = createLoginCode(userId, CODE_VALIDITY_MS);
 
 	res.json({
 		status: "ok",
@@ -245,7 +201,7 @@ router.post('/user/login/code', async (req, res) => {
 		});
 		return;
 	}
-	const userId = ramStore.codes[code]?.userId;
+	const userId = useLoginCode(code);
 	const user = await useDatabase(async db => db.users.find(user => user.id === userId));
 	if (!user) {
 		res.statusMessage = 'Unprocessable Entity';
@@ -256,8 +212,6 @@ router.post('/user/login/code', async (req, res) => {
 		return;
 	}
 	else {
-		clearInterval(ramStore.codes[code]!.intervalHandle);
-		delete ramStore.codes[code];
 		res.json({
 			status: "ok",
 			user
